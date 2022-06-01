@@ -60,6 +60,8 @@ func main() {
 	var enableLeaderElection, enableApprovedCheck bool
 	var probeAddr string
 	var localAWSEndpoint string
+	var configFile string
+	var err error
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -70,20 +72,34 @@ func main() {
 	flag.StringVar(&localAWSEndpoint, "local-aws-endpoint", "", "local-kms endpoint for testing")
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
+	flag.StringVar(&configFile, "config", "",
+		"The controller will load its initial configuration from this file. "+
+			"Omit this flag to use the default configuration values. "+
+			"Command-line flags override configuration from this file.")
 	flag.Parse()
+
+	options := ctrl.Options{Scheme: scheme}
+	if configFile != "" {
+		options, err = options.AndFrom(ctrl.ConfigFile().AtPath(configFile))
+		if err != nil {
+			setupLog.Error(err, "unable to load the config file")
+			os.Exit(1)
+		}
+	}
 
 	// Set up logging and set up logger (use in this function only)
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	setupLog := ctrl.Log.WithName("setup")
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	// mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	// 	Scheme:                 scheme,
+	// 	MetricsBindAddress:     metricsAddr,
+	// 	Port:                   webhookPort,
+	// 	HealthProbeBindAddress: probeAddr,
+	// 	LeaderElection:         enableLeaderElection,
+	// 	LeaderElectionID:       "dcb53387.skyscanner.net",
+	// })
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   webhookPort,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "dcb53387.skyscanner.net",
-	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

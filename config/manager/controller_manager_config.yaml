@@ -9,3 +9,10 @@ webhook:
 leaderElection:
   leaderElect: true
   resourceName: dcb53387
+
+
+
+	flag.BoolVar(&enableApprovedCheck, "enable-approved-check", true,
+		"Enable waiting for CertificateRequests to have an approved condition before signing.")
+	flag.StringVar(&localAWSEndpoint, "local-aws-endpoint", "", "local-kms endpoint for testing")
+	opts := zap.Options{Development: true}
